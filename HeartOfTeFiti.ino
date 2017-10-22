@@ -3,7 +3,7 @@
 #include "RF24.h"
 #include <printf.h>
 
-const int pixelCount=3;
+const int pixelCount=5;
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = pin number (most are valid)
 // Parameter 3 = pixel type flags, add together as needed:
@@ -23,6 +23,10 @@ volatile unsigned long lastReceive=0;
 volatile unsigned long lastSend=0;
 //default delay used in patterns
 const int defaultDelay=10;
+const unsigned long idleTimeout=5000;
+
+unsigned long dividerTicks=0;
+unsigned long idleTicks=0;
 
 //structure for sending pixel commands over radio
 typedef struct {
@@ -47,7 +51,7 @@ void setup() {
 
   //pixel setup
   strip.begin();
-  strip.setBrightness(32);
+  strip.setBrightness(64);
   strip.show(); // Initialize all pixels to 'off'
 
   //setup the button
@@ -76,7 +80,7 @@ void setup() {
 //  Serial.println("Setup Complete");
 //  Serial.flush();
 
-  button();
+  //button();
   //pulsateN(5,50,1,255,1);
 }
 
@@ -85,8 +89,8 @@ void button(){
   unsigned long now=millis();
 
   //don't let the user interrupt a pattern in process
-  if((lastReceive==0 || now - lastReceive > 5000)
-  && (lastSend==0 || now-lastSend > 5000))
+  if((lastReceive==0 || now - lastReceive > idleTimeout)
+  && (lastSend==0 || now-lastSend > idleTimeout))
   {
     randomPattern();
   }
@@ -127,7 +131,16 @@ void startPattern(){
 
 //call at end of every pattern
 void endPattern(){
+  clearPixels();
+  idleTicks=0;
+  dividerTicks=0;
   radio.startListening();
+}
+
+void clearPixels(){
+  for(int p=0;p<pixelCount;p++){
+    setLocalAndRemotePixelColor(p,0,0,0,p==pixelCount-1);
+  }
 }
 
 //sends a pixel value to be set on listening devices
@@ -170,13 +183,26 @@ void loop() {
 //        }
 //        
 //        Serial.flush();
-  
-        strip.setPixelColor(p.index, p.r, p.g, p.b);
+        //it's possible the sender has more pixels than we do, make sure we're showing it somewhere
+        strip.setPixelColor(p.index % pixelCount, p.r, p.g, p.b);
 
         if(p.show){
           strip.show();
         }
+        //reset the idle counter so that the idle pattern syncs up when this pattern is done
+        idleTicks=0;
+        dividerTicks=0;
       }
+   }
+   else
+   {
+    //if no radio
+    unsigned long now=millis();
+    if((lastReceive==0 || now - lastReceive > idleTimeout)
+      && (lastSend==0 || now - lastSend > idleTimeout))
+    {
+      idlePattern();
+    }
    }
 }
 
@@ -204,6 +230,37 @@ void randomPattern(){
   else if(m==5){
     marble(10,random(255),random(255),random(255));
   }
+}
+
+void idlePattern(){
+
+  dividerTicks++;
+
+  if(dividerTicks>=50){
+    idleTicks++;
+    dividerTicks=0;
+  }
+  
+  unsigned int ticks = idleTicks % 510;
+  
+  for(int i=0;i<pixelCount;i++){
+    unsigned int offset = (i*(255/pixelCount));
+    unsigned int pixelTicks = (ticks + offset) % 510;
+
+    if(pixelTicks > 255){
+      pixelTicks = pixelTicks - 255;
+      pixelTicks = 255 - pixelTicks;
+    }
+
+    if(((idleTicks+offset) / 510)%pixelCount == i){
+      strip.setPixelColor(i, 0, pixelTicks, 0);
+    }
+    else{
+      strip.setPixelColor(i, 0, 0, pixelTicks);
+    }
+  }
+  strip.show();
+  
 }
 
 void insanity(int n){
@@ -306,15 +363,15 @@ void pulsateN(int n,int step,byte r, byte g, byte b){
 
 void pulsateOne(int step,byte r,byte g, byte b){
   for(int i=0;i<step;i++){
-      setLocalAndRemotePixelColor(0,r - ((r/step)*i),g- ((g/step)*i),b- ((b/step)*i),false);
-      setLocalAndRemotePixelColor(1,r- ((r/step)*i),g- ((g/step)*i),b- ((b/step)*i),false);
-      setLocalAndRemotePixelColor(2,r- ((r/step)*i),g- ((g/step)*i),b- ((b/step)*i),true);
+      for(int x=0;x<pixelCount;x++){
+        setLocalAndRemotePixelColor(x,r - ((r/step)*i),g- ((g/step)*i),b- ((b/step)*i),x==pixelCount-1);
+      }
       delay(defaultDelay);
     }
     for(int i=step;i>0;i--){
-      setLocalAndRemotePixelColor(0,r - ((r/step)*i),g- ((g/step)*i),b- ((b/step)*i),false);
-      setLocalAndRemotePixelColor(1,r- ((r/step)*i),g- ((g/step)*i),b- ((b/step)*i),false);
-      setLocalAndRemotePixelColor(2,r- ((r/step)*i),g- ((g/step)*i),b- ((b/step)*i),true);
+      for(int x=0;x<pixelCount;x++){
+        setLocalAndRemotePixelColor(x,r - ((r/step)*i),g- ((g/step)*i),b- ((b/step)*i),x==pixelCount-1);
+      }
       delay(defaultDelay);
     }
 }
@@ -328,8 +385,8 @@ void randomSolid(){
 
 void solid(byte r, byte g,byte b){
   startPattern();
-  setLocalAndRemotePixelColor(0,r,g,b,false);
-  setLocalAndRemotePixelColor(1,r,g,b,false);
-  setLocalAndRemotePixelColor(2,r,g,b,true);
+  for(int x=0;x<pixelCount;x++){
+    setLocalAndRemotePixelColor(x,r,g,b,x==pixelCount-1);
+  }
   endPattern();
 }
