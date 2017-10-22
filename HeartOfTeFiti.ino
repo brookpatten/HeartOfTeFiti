@@ -66,22 +66,6 @@ void setup() {
   radio.openReadingPipe(1,addresses[0]);
   radio.setAutoAck( false ) ;
   radio.startListening();
-
-  //delay(2000);
-  //pulsateN(5,50,0,255,0);
-  //pulse green on startup
-  
-//  int channel = radio.getChannel();
-//  Serial.print("Channel ");
-//  Serial.println(channel);
-//  printf_begin();
-//  radio.printDetails();
-
-//  Serial.println("Setup Complete");
-//  Serial.flush();
-
-  //button();
-  //pulsateN(5,50,1,255,1);
 }
 
 //invoked when the button is pushed
@@ -127,6 +111,8 @@ void setLocalAndRemotePixelColor(byte index,byte r,byte g,byte b,bool show){
 //call at beginning of every pattern
 void startPattern(){
   radio.stopListening(); 
+  idleTicks=0;
+  dividerTicks=0;
 }
 
 //call at end of every pattern
@@ -166,23 +152,6 @@ void loop() {
 
         lastReceive = millis();
         
-//        Serial.print("Received ");
-//        Serial.print(p.index);
-//        Serial.print(" ");
-//        Serial.print(p.r);
-//        Serial.print("/");
-//        Serial.print(p.g);
-//        Serial.print("/");
-//        Serial.print(p.b);
-//
-//        if(p.show){
-//          Serial.println(" show");
-//        }
-//        else{
-//          Serial.println("");
-//        }
-//        
-//        Serial.flush();
         //it's possible the sender has more pixels than we do, make sure we're showing it somewhere
         strip.setPixelColor(p.index % pixelCount, p.r, p.g, p.b);
 
