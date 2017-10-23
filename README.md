@@ -9,3 +9,5 @@ Components
 * 2x 10uf Capacitors
 * 2x 470 ohm resistors
 * wire, Recommend 30awg solid
+* momentary switch
+* 500mah li-poly Battery (Adafruit 1578)
