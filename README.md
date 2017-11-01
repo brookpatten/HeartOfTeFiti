@@ -1,5 +1,7 @@
 # HeartOfTeFiti
-A 3d Printed Amulet with Neopixels controlled by an Arduino, Synchronized with other via NRF24 Radio
+A 3d Printed Amulet with Neopixels controlled by an Arduino, Synchronized with other via NRF24 Radio.
+
+When the button is pushed the arduino chooses a random light pattern and displays it.  While displaying it broadcasts each pixel value using the nrf24 radio to any nearby units as well.  Nearby units will receive the pixel instructions and replicate the pattern.  When the pattern ends there is a 5 second interval before another pattern can be begun (by any which participated in the previous pattern).
 
 Components
 * Shell/Cover (3d printed, models included)
