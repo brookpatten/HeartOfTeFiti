@@ -12,7 +12,7 @@ Components
 * 2x 470 ohm resistors (Optional but recommended)
 * wire, Recommend 30awg solid
 * momentary button switch
-* 370 li-poly Battery
+* 3.7v 370mah li-poly Battery
 * 2x M3 x 10mm Hex Head Bolt
 
 For Assembly
