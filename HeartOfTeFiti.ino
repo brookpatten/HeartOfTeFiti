@@ -11,7 +11,7 @@ const int pixelCount = 5;
 //   NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
 //   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
 //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(pixelCount, 5, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(pixelCount, pixelCount, NEO_GRB + NEO_KHZ800);
 
 //nrf24 radio
 RF24 radio(10, 9);
@@ -27,6 +27,10 @@ const unsigned long idleTimeout = 5000;
 
 volatile unsigned long dividerTicks = 0;
 volatile unsigned long idleTicks = 0;
+
+//this setting puts it in "pumpkin mode" so that a special version of the device 
+//can be used as the light for a jackolantern and will react to the amulets too
+const bool isPumpkin = false;
 
 //structure for sending pixel commands over radio
 typedef struct {
@@ -66,6 +70,23 @@ void setup() {
   radio.openReadingPipe(1, addresses[0]);
   radio.setAutoAck( false ) ;
   radio.startListening();
+
+  int channel = radio.getChannel();
+  //Serial.print("Channel ");
+  //Serial.println(channel);
+  //printf_begin();
+  //radio.printDetails();
+
+  //if it's a pumpking show yellow
+  if(isPumpkin){
+    for(int i=0;i<pixelCount;i++){
+      strip.setPixelColor(i, 255, 255, 0);
+    }
+    strip.show();
+  }
+
+  //Serial.println("Setup Complete");
+  //Serial.flush();
 }
 
 //invoked when the button is pushed
@@ -78,31 +99,20 @@ void button() {
   {
     randomPattern();
   }
+
+  //if it's a pumpkin return to yello after the pattern
+  if(isPumpkin){
+    for(int i=0;i<pixelCount;i++){
+      strip.setPixelColor(i, 255, 255, 0);
+    }
+    strip.show();
+  }
 }
 
 //convenience method to set local and remote pixels to the same values
 void setLocalAndRemotePixelColor(byte index, byte r, byte g, byte b, bool show) {
-  //  Serial.print("Set ");
-  //  Serial.print(index);
-  //  Serial.print(" to ");
-  //  Serial.print(r);
-  //  Serial.print("/");
-  //  Serial.print(g);
-  //  Serial.print("/");
-  //  Serial.print(b);
-
-  //  if(show){
-  //    Serial.println(" show");
-  //  }
-  //  else{
-  //    Serial.println("");
-  //  }
-  //
-  //  Serial.flush();
-
   strip.setPixelColor(index, r, g, b);
   setRemotePixelColor(index, r, g, b, show);
-
   if (show) {
     strip.show();
   }
@@ -149,34 +159,44 @@ void loop() {
 
     while (radio.available()) {
       radio.read( &p, sizeof(pixel) );
-
       lastReceive = millis();
 
       //it's possible the sender has more pixels than we do, make sure we're showing it somewhere
       strip.setPixelColor(p.index % pixelCount, p.r, p.g, p.b);
-
+      
       if (p.show) {
         strip.show();
       }
       //reset the idle counter so that the idle pattern syncs up when this pattern is done
       idleTicks = 1;
       dividerTicks = 1;
+
+      //if it's a pumpkin then return to yellow
+      if(isPumpkin){
+        if(p.r==0 && p.g==0 && p.b==0 && p.show){
+          for(int i=0;i<pixelCount;i++){
+            strip.setPixelColor(i, 255, 255, 0);
+          }
+          strip.show();
+        }
+      }
     }
   }
-  else
-  {
+  //TODO: get this working.  Right now it seems to be interferring with the radio receive working right
+  //else
+  //{ 
     //if no radio
-    unsigned long now = millis();
-    if ((lastReceive == 0 || (now - lastReceive > 0 && now - lastReceive > idleTimeout))
-        && (lastSend == 0 || (now - lastSend > 0 && now - lastSend > idleTimeout)))
-    {
-      idlePattern();
-    }
-    else
-    {
-      clearPixels();
-    }
-  }
+    //unsigned long now = millis();
+    //if ((lastReceive == 0 || (now - lastReceive > 0 && now - lastReceive > idleTimeout))
+    //    && (lastSend == 0 || (now - lastSend > 0 && now - lastSend > idleTimeout)))
+    //{
+      //idlePattern();
+    //}
+    //else
+    //{
+      //clearPixels();
+    //}
+  //}
 }
 
 
